@@ -31040,19 +31040,21 @@ uint32 Player::GetUnlockedPetBattleSlot()
 
 void Player::UnsummonCurrentBattlePetIfAny(bool p_Unvolontary)
 {
-    if (!_battlePetSummon)
-        return;
-
     if (!p_Unvolontary)
         _lastSummonedBattlePet = 0;
 
-    if (Creature* pet = GetSummonedBattlePet())
+    Creature* pet = GetSummonedBattlePet();
+    if (!pet && !GetCritterGUID().IsEmpty())
+        pet = ObjectAccessor::GetCreatureOrPetOrVehicle(*this, GetCritterGUID());
+
+    if (pet)
     {
         pet->DespawnOrUnsummon();
         pet->AddObjectToRemoveList();
     }
 
     _battlePetSummon.Clear();
+    SetSummonedBattlePetGUID(ObjectGuid::Empty);
 }
 
 void Player::SummonBattlePet(ObjectGuid journalID)
@@ -31081,7 +31083,11 @@ void Player::SummonBattlePet(ObjectGuid journalID)
     if (!speciesEntry)
         return;
 
+    SetSummonedBattlePetGUID(journalID);
     CastSpell(this, speciesEntry->SummonSpellID ? speciesEntry->SummonSpellID : uint32(118301));
+
+    _battlePetSummon = GetCritterGUID();
+    _lastSummonedBattlePet = journalID.GetCounter();
 }
 
 Creature* Player::GetSummonedBattlePet()
@@ -31224,6 +31230,7 @@ bool Player::AddBattlePetWithSpeciesId(BattlePetSpeciesEntry const* entry, uint1
     pet->Health = pet->InfoMaxHealth;
     auto guidlow = pet->AddToPlayer(this);
     _battlePets.emplace(pet->JournalID, pet);
+    UpdateCriteria(CRITERIA_TYPE_COLLECT_BATTLEPET);
 
     if (sendUpdate)
     {
@@ -31283,8 +31290,7 @@ bool Player::_LoadPetBattles(PreparedQueryResult result)
         {
             auto BattlePetPtr = std::make_shared<BattlePet>();
             BattlePetPtr->Load(result->Fetch());
-            if (!alreadyKnownPet.insert(BattlePetPtr->Species).second)
-                continue;
+            alreadyKnownPet.insert(BattlePetPtr->Species);
 
             _battlePets.emplace(BattlePetPtr->JournalID, BattlePetPtr);
 

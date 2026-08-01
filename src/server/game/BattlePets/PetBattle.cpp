@@ -939,6 +939,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
                 Pets[Teams[currentTeamID]->CapturedPet]->Slot = PET_BATTLE_NULL_SLOT;
                 Pets[Teams[currentTeamID]->CapturedPet]->AddToPlayer(player);
                 player->_battlePets.emplace(Pets[Teams[currentTeamID]->CapturedPet]->JournalID, Pets[Teams[currentTeamID]->CapturedPet]);
+                player->UpdateCriteria(CRITERIA_TYPE_COLLECT_BATTLEPET);
                 player->GetSession()->SendBattlePetUpdates(Pets[Teams[currentTeamID]->CapturedPet].get(), true);
 
                 if (auto speciesInfo = sBattlePetSpeciesStore.LookupEntry(Pets[Teams[currentTeamID]->CapturedPet]->Species))
